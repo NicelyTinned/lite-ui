@@ -1,0 +1,12 @@
+{
+    "name": "LiteUI",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "LiteUI": {
+                "$path": "src"
+            }
+        }
+    }
+}
+                                        
