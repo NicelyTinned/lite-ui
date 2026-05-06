@@ -62,7 +62,7 @@ function Element.new(className, props, parent)
     
     if not blueprint then
         self.Instance = typeof(className) == "Instance" and className or Instance.new(className)
-    elseif
+    else
         self.Instance = Instance.new(className.BaseClass)
     end
     
