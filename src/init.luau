@@ -235,7 +235,7 @@ function Element:Change(props)
                 end
             end
         elseif isValue(v) then
-            local disconnect = val:Observe(function(latestValue)
+            local disconnect = v:Observe(function(latestValue)
                 if self.Instance then
                     self.Instance[k] = latestValue
                 end
