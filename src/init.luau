@@ -4,12 +4,19 @@ LiteUI.Blueprints = {}
 local Element = {}
 Element.__index = Element
 
+local Value = {}
+Value.__index = Value
+
 local function isInstance(val)
     return typeof(val) == "Instance"
 end
 
 local function isBlueprint(val)
     return typeof(val) == "table" and val._type == "blueprint"
+end
+
+local function isValue(val)
+    return typeof(val) == "table" and val._type == "value"
 end
 
 local function cloneEverything(t, cache)
@@ -56,6 +63,47 @@ function LiteUI.Blueprint(name, className, props)
     return LiteUI.Blueprints[name]
 end
 
+function LiteUI.Value(val)
+    return Value.new(val)
+end
+
+function Value.new(initialValue)
+    local self = setmetatable({
+        _value = initialValue,
+        _type = "value",
+        _listeners = {}
+    }, Value)
+    return self
+end
+
+function Value:Get()
+    return self._value
+end
+
+function Value:Set(newValue)
+    if self._value ~= newValue then
+        self._value = newValue
+        for _, callback in ipairs(self._listeners) do
+            task.spawn(callback, newValue)
+        end
+    end
+end
+
+function Value:Observe(callback)
+    table.insert(self._listeners, callback)
+    
+    task.spawn(callback, self._value)
+    
+    return function()
+        for i, registeredCallback in ipairs(self._listeners) do
+            if registeredCallback == callback then
+                table.remove(self._listeners, i)
+                break
+            end
+        end
+    end
+end
+
 function Element.new(className, props, parent)
     local self = setmetatable({}, Element)
     local blueprint = isBlueprint(className)
@@ -68,6 +116,7 @@ function Element.new(className, props, parent)
     
     self.Events = {}
     self._registered_events = {}
+    self._activeSubscriptions = {}
     
     if blueprint then
         local mutated = cloneEverything(className.Properties)
@@ -88,6 +137,8 @@ function Element.new(className, props, parent)
         self:Change(props)
     end
     
+    self.Instance.Destroying:Once(self.Destroy)
+    
     if parent then self:Parent(parent) end
     
     return self
@@ -107,6 +158,11 @@ function Element:Parent(parent)
 end
 
 function Element:Event(name, fn)
+    if name == "Init" then
+        task.spawn(fn, self)
+        return self
+    end
+    
     table.insert(self.Events, {name, fn})
     
     local found = false
@@ -122,7 +178,7 @@ function Element:Event(name, fn)
         con = self.Instance[name]:Connect(function(...)
             for _, con in ipairs(self.Events) do
                 if con[1] == name then
-                    con[2](self, ...)
+                    task.spawn(function()con[2](self, ...)end)
                 end
             end
         end)
@@ -156,6 +212,11 @@ end
 
 function Element:Change(props)
     for k, v in pairs(props) do
+        if self._activeSubscriptions[k] then
+            self._activeSubscriptions[k]()
+            self._activeSubscriptions[k] = nil
+        end
+        
         if k == "Events" then
             for eve, nt in pairs(v) do
                 self:Event(eve, nt)
@@ -173,6 +234,14 @@ function Element:Change(props)
                     created.Instance.Name = name
                 end
             end
+        elseif isValue(v) then
+            local disconnect = val:Observe(function(latestValue)
+                if self.Instance then
+                    self.Instance[k] = latestValue
+                end
+            end)
+            
+            self._activeSubscriptions[k] = disconnect
         else
             self.Instance[k] = v
         end
@@ -192,8 +261,13 @@ function Element:Tween(goal, info, fn)
 end
 
 function Element:Destroy()
+    for _, disc in pairs(self._activeSubscriptions) do
+        disc()
+    end
+    self._activeSubscriptions = {}
+    
     self:DisconnectEvents()
-    self.Instance:Destroy()
+    if self.Instance then self.Instance:Destroy() end
     
     self.Instance = nil
     self.Events = nil
