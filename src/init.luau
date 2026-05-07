@@ -109,7 +109,7 @@ function Element.new(className, props, parent)
     local blueprint = isBlueprint(className)
     
     if not blueprint then
-        self.Instance = typeof(className) == "Instance" and className or Instance.new(className)
+        self.Instance = typeof(className) == "Instance" and className or Instance.new(className :: string)
     else
         self.Instance = Instance.new(className.BaseClass)
     end
@@ -178,7 +178,7 @@ function Element:Event(name, fn)
         con = self.Instance[name]:Connect(function(...)
             for _, con in ipairs(self.Events) do
                 if con[1] == name then
-                    task.spawn(function()con[2](self, ...)end)
+                    task.spawn(con[2], self, ...)
                 end
             end
         end)
