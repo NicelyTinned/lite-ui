@@ -77,9 +77,9 @@ function Value.new(initialValue, processFunction)
     return self
 end
 
-function Value:Get(noProcess)
+function Value:Get()
     local val = self._value
-    if self._procfn and not noProcess then
+    if self._procfn then
         val = self._procfn(val)
     end
     return val
@@ -120,7 +120,7 @@ function Element.new(className, props, parent)
     local blueprint = isBlueprint(className)
     
     if not blueprint then
-        self.Instance = typeof(className) == "Instance" and className or Instance.new(className)
+        self.Instance = typeof(className) == "Instance" and className or Instance.new(className :: string)
     else
         self.Instance = Instance.new(className.BaseClass)
     end
@@ -189,7 +189,7 @@ function Element:Event(name, fn)
         con = self.Instance[name]:Connect(function(...)
             for _, con in ipairs(self.Events) do
                 if con[1] == name then
-                    task.spawn(function()con[2](self, ...)end)
+                    task.spawn(con[2], self, ...)
                 end
             end
         end)
@@ -246,7 +246,7 @@ function Element:Change(props)
                 end
             end
         elseif isValue(v) then
-            local disconnect = val:Observe(function(latestValue)
+            local disconnect = v:Observe(function(latestValue)
                 if self.Instance then
                     self.Instance[k] = latestValue
                 end
