@@ -77,9 +77,9 @@ function Value.new(initialValue, processFunction)
     return self
 end
 
-function Value:Get()
+function Value:Get(noProcess)
     local val = self._value
-    if self._procfn then
+    if self._procfn and not noProcess then
         val = self._procfn(val)
     end
     return val
