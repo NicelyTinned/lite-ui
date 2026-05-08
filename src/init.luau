@@ -67,26 +67,37 @@ function LiteUI.Value(val)
     return Value.new(val)
 end
 
-function Value.new(initialValue)
+function Value.new(initialValue, processFunction)
     local self = setmetatable({
         _value = initialValue,
         _type = "value",
-        _listeners = {}
+        _listeners = {},
+        _procfn = processFunction
     }, Value)
     return self
 end
 
 function Value:Get()
-    return self._value
+    local val = self._value
+    if self._procfn then
+        val = self._procfn(val)
+    end
+    return val
 end
 
-function Value:Set(newValue)
-    if self._value ~= newValue then
+function Value:Set(newValue, _force)
+    if self._value ~= newValue or _force then
         self._value = newValue
         for _, callback in ipairs(self._listeners) do
             task.spawn(callback, newValue)
         end
     end
+end
+
+function Value:Process(fn)
+    self._procfn = fn
+    self:Set(self._value, true)
+    return self
 end
 
 function Value:Observe(callback)
@@ -109,7 +120,7 @@ function Element.new(className, props, parent)
     local blueprint = isBlueprint(className)
     
     if not blueprint then
-        self.Instance = typeof(className) == "Instance" and className or Instance.new(className :: string)
+        self.Instance = typeof(className) == "Instance" and className or Instance.new(className)
     else
         self.Instance = Instance.new(className.BaseClass)
     end
@@ -178,7 +189,7 @@ function Element:Event(name, fn)
         con = self.Instance[name]:Connect(function(...)
             for _, con in ipairs(self.Events) do
                 if con[1] == name then
-                    task.spawn(con[2], self, ...)
+                    task.spawn(function()con[2](self, ...)end)
                 end
             end
         end)
@@ -235,7 +246,7 @@ function Element:Change(props)
                 end
             end
         elseif isValue(v) then
-            local disconnect = v:Observe(function(latestValue)
+            local disconnect = val:Observe(function(latestValue)
                 if self.Instance then
                     self.Instance[k] = latestValue
                 end
