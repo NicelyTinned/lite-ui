@@ -103,7 +103,7 @@ end
 function Value:Observe(callback)
     table.insert(self._listeners, callback)
     
-    task.spawn(callback, self._value)
+    task.spawn(callback, self:Get())
     
     return function()
         for i, registeredCallback in ipairs(self._listeners) do
