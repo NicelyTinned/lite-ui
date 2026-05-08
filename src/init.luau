@@ -89,7 +89,7 @@ function Value:Set(newValue, _force)
     if self._value ~= newValue or _force then
         self._value = newValue
         for _, callback in ipairs(self._listeners) do
-            task.spawn(callback, newValue)
+            task.spawn(callback, self:Get())
         end
     end
 end
