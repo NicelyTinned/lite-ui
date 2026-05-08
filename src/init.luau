@@ -63,8 +63,8 @@ function LiteUI.Blueprint(name, className, props)
     return LiteUI.Blueprints[name]
 end
 
-function LiteUI.Value(val)
-    return Value.new(val)
+function LiteUI.Value(val, fn)
+    return Value.new(val, fn)
 end
 
 function Value.new(initialValue, processFunction)
